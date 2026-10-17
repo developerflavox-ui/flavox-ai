@@ -1,0 +1,25 @@
+import './style.css';
+const API_BASE=(import.meta.env.VITE_API_BASE||'http://localhost:8000').replace(/\/$/,'');
+document.querySelector('#app').innerHTML=`
+<main class="shell"><header class="topbar"><a class="brand"><span class="brand-icon">F</span><span>FLAVOX <b>AI</b><small>VIDEO ENHANCER</small></span></a><span class="status"><i></i> AI STUDIO</span></header>
+<section class="hero"><div class="eyebrow">✦ NEXT-GEN VIDEO ENHANCEMENT</div><h1>Make every frame<br><span>look extraordinary.</span></h1><p>Upscale, sharpen and clean up your videos with FLAVOX enhancement studio.</p></section>
+<section class="workspace"><div class="upload-card" id="dropzone"><input id="videoFile" type="file" accept="video/*,.mkv,.avi,.mov,.webm" hidden/><div class="upload-icon">⇧</div><h2>Drop your video here</h2><p>or choose a file from your device</p><button class="primary" id="chooseBtn">Choose video <span>↗</span></button><small>MP4, MOV, MKV, WEBM · max 500 MB default</small><div id="fileInfo" class="file-info"></div></div>
+<div class="settings-card"><div class="card-title"><span class="spark">✦</span><div><h2>Enhancement settings</h2><p>Fine-tune your output</p></div></div><label class="field-label">UPSCALE RESOLUTION</label><div class="scale-options"><button data-scale="1">Original<small>1×</small></button><button data-scale="2" class="selected">2×<small>Upscale</small></button><button data-scale="4">4×<small>Upscale</small></button></div>
+<div class="toggle-row"><div><b>Denoise</b><small>Reduce grain and visual noise</small></div><label class="switch"><input id="denoise" type="checkbox" checked><span></span></label></div><div class="toggle-row"><div><b>Detail Sharpening</b><small>Improve edge clarity</small></div><label class="switch"><input id="sharpen" type="checkbox" checked><span></span></label></div>
+<label class="field-label" for="fps">FRAME RATE</label><select id="fps"><option value="0">Keep original FPS</option><option value="30">30 FPS</option><option value="60">60 FPS</option></select><button class="primary process-btn" id="processBtn">✦ Enhance video <span>→</span></button><div class="progress-wrap" id="progressWrap"><div class="progress-text"><span id="progressLabel">Processing video…</span><span>In progress</span></div><div class="progress"><i></i></div></div><div id="message" role="status"></div></div></section>
+<section class="notice"><span>ⓘ</span><p><b>Processing note</b><br>This starter currently uses FFmpeg filters. For genuine AI super-resolution, deploy a compatible AI model and inference server. 4× resize does not guarantee recovered 4K detail.</p></section><footer>© 2026 FLAVOX AI <span>BUILT FOR BETTER FRAMES</span></footer></main>`;
+let selectedScale=2, selectedFile=null;
+const fileInput=document.querySelector('#videoFile'), dropzone=document.querySelector('#dropzone'), message=document.querySelector('#message'), processBtn=document.querySelector('#processBtn');
+document.querySelector('#chooseBtn').onclick=()=>fileInput.click();
+fileInput.onchange=()=>setFile(fileInput.files?.[0]);
+dropzone.ondragover=e=>{e.preventDefault();dropzone.classList.add('dragover')};
+dropzone.ondragleave=()=>dropzone.classList.remove('dragover');
+dropzone.ondrop=e=>{e.preventDefault();dropzone.classList.remove('dragover');setFile(e.dataTransfer.files?.[0])};
+document.querySelectorAll('[data-scale]').forEach(b=>b.onclick=()=>{selectedScale=+b.dataset.scale;document.querySelectorAll('[data-scale]').forEach(x=>x.classList.toggle('selected',x===b))});
+function setFile(f){if(!f)return;if(!f.type.startsWith('video/')&&!/\.(mp4|mov|mkv|avi|webm|m4v)$/i.test(f.name)){message.textContent='Choose a supported video file.';return}selectedFile=f;document.querySelector('#fileInfo').textContent=`✓ ${f.name} · ${(f.size/1048576).toFixed(1)} MB`;message.textContent=''}
+processBtn.onclick=async()=>{if(!selectedFile){message.textContent='Choose a video first.';return}
+const form=new FormData();form.append('file',selectedFile);form.append('scale',String(selectedScale));form.append('denoise',String(document.querySelector('#denoise').checked));form.append('sharpen',String(document.querySelector('#sharpen').checked));form.append('fps',document.querySelector('#fps').value);
+processBtn.disabled=true;document.querySelector('#progressWrap').classList.add('visible');message.textContent='Uploading and processing. Please wait…';
+try{const r=await fetch(`${API_BASE}/api/enhance`,{method:'POST',body:form});if(!r.ok){let d=`Request failed (${r.status})`;try{d=(await r.json()).detail||d}catch{}throw Error(d)}
+const url=URL.createObjectURL(await r.blob()),a=document.createElement('a');a.href=url;a.download='FLAVOX_AI_Enhanced.mp4';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);message.textContent='Done! Download started.';document.querySelector('#progressLabel').textContent='Enhancement complete'
+}catch(e){message.textContent=`Processing failed: ${e.message}. Check backend URL and server status.`}finally{processBtn.disabled=false}};
